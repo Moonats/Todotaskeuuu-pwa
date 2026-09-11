@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-cache-v3'; // Naik ke versi 3
+const CACHE_NAME = 'orbit-cache-v4'; // Versi 4
 const urlsToCache = ['./', './index.html', './app.js', './manifest.json'];
 
 self.addEventListener('install', event => {
