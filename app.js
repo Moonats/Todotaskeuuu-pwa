@@ -1,165 +1,162 @@
-let tasks = JSON.parse(localStorage.getItem('tasks_v2')) || [];
-let categories = JSON.parse(localStorage.getItem('categories')) || [
-    { id: '1', name: 'Umum', color: '#808080' },
-    { id: '2', name: 'Kerja', color: '#007bff' }
+let tasks = JSON.parse(localStorage.getItem('tasks_v3')) || [];
+let categories = JSON.parse(localStorage.getItem('categories_v3')) || [
+    { id: '1', name: 'Umum', color: '#808080', icon: '📌' },
+    { id: '2', name: 'Kerja', color: '#0074D9', icon: '💼' }
 ];
-let currentFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', () => {
-    Notification.requestPermission();
     loadTheme();
     renderCategories();
-    renderTasks();
-    startAlarmChecker();
+    renderAllViews();
 });
+
+// --- Navigasi Ala Instagram ---
+function switchView(viewName) {
+    document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
+    document.getElementById(`view-${viewName}`).classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    if(viewName !== 'settings') {
+        document.getElementById(`nav-${viewName}`).classList.add('active');
+    }
+    renderAllViews();
+}
 
 // --- Fungsi Tugas ---
 function addTask() {
-    let text = document.getElementById('taskInput').value.trim();
+    let title = document.getElementById('taskInput').value.trim();
+    let desc = document.getElementById('taskDesc').value.trim();
+    let icon = document.getElementById('taskIcon').value.trim() || '📝';
     let time = document.getElementById('taskTime').value;
     let catId = document.getElementById('taskCategory').value;
     
-    if (!text) return alert('Tugas tidak boleh kosong!');
+    if (!title || !time) return alert('Judul dan Waktu (Tanggal/Jam) wajib diisi!');
 
-    let newTask = {
-        id: Date.now().toString(),
-        text: text,
-        time: time,
-        categoryId: catId,
-        isCompleted: false,
-        notified: false
-    };
-
-    tasks.push(newTask);
-    saveTasks();
+    tasks.push({ id: Date.now().toString(), title, desc, icon, time, categoryId: catId, isCompleted: false });
+    localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+    
     document.getElementById('taskInput').value = '';
-    renderTasks();
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('taskIcon').value = '';
+    document.getElementById('taskTime').value = '';
+    
+    alert('Tugas ditambahkan!');
+    renderAllViews();
 }
 
-function renderTasks() {
-    let list = document.getElementById('taskList');
-    list.innerHTML = '';
+function renderAllViews() {
+    renderHomeTimeline();
+    renderAllTasks();
+}
+
+function renderTaskHTML(task) {
+    let cat = categories.find(c => c.id === task.categoryId) || categories[0];
+    let timeText = new Date(task.time).toLocaleString('id-ID', {day: 'numeric', month:'short', hour: '2-digit', minute:'2-digit'});
     
-    let filteredTasks = tasks.filter(t => {
-        if (currentFilter === 'pending') return !t.isCompleted;
-        if (currentFilter === 'completed') return t.isCompleted;
-        return true; // 'all'
-    });
-
-    filteredTasks.forEach(task => {
-        let cat = categories.find(c => c.id === task.categoryId) || categories[0];
-        let li = document.createElement('li');
-        if (task.isCompleted) li.className = 'completed';
-
-        let timeText = task.time ? new Date(task.time).toLocaleString('id-ID') : 'Tidak ada waktu';
-
-        li.innerHTML = `
+    return `
+        <div class="task-card ${task.isCompleted ? 'completed' : ''}">
             <div class="task-header">
-                <span class="task-title">${task.text}</span>
-                <span class="badge" style="background: ${cat.color}">${cat.name}</span>
+                <div class="task-title"><span>${task.icon}</span> ${task.title}</div>
+                <span class="badge" style="background: ${cat.color}">${cat.icon} ${cat.name}</span>
             </div>
+            ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
             <div class="task-time">⏰ ${timeText}</div>
             <div class="actions">
-                <button class="btn-icon" onclick="toggleComplete('${task.id}')" title="Selesai/Belum">✔</button>
-                <button class="btn-icon" onclick="editTask('${task.id}')" title="Edit">✏</button>
-                <button class="btn-icon" onclick="deleteTask('${task.id}')" title="Hapus">🗑</button>
+                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${task.isCompleted ? '↩️ Batal' : '✅ Selesai'}</button>
+                <button class="btn-icon" onclick="deleteTask('${task.id}')">🗑️ Hapus</button>
             </div>
-        `;
-        list.appendChild(li);
+        </div>
+    `;
+}
+
+// --- Logika Waktu (Hari Ini, Besok, Nanti) ---
+function renderHomeTimeline() {
+    let todayBox = document.querySelector('#timelineToday .list');
+    let tomorrowBox = document.querySelector('#timelineTomorrow .list');
+    let nextWeekBox = document.querySelector('#timelineNextWeek .list');
+    
+    todayBox.innerHTML = ''; tomorrowBox.innerHTML = ''; nextWeekBox.innerHTML = '';
+    
+    let now = new Date();
+    let today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    let tomorrow = today + (86400000); // +1 hari
+    
+    tasks.filter(t => !t.isCompleted).sort((a,b) => new Date(a.time) - new Date(b.time)).forEach(task => {
+        let tDate = new Date(task.time);
+        let tTime = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate()).getTime();
+        
+        let html = renderTaskHTML(task);
+        if (tTime === today) todayBox.innerHTML += html;
+        else if (tTime === tomorrow) tomorrowBox.innerHTML += html;
+        else nextWeekBox.innerHTML += html;
+    });
+}
+
+function renderAllTasks() {
+    let list = document.getElementById('allTaskList');
+    list.innerHTML = '';
+    tasks.sort((a,b) => new Date(a.time) - new Date(b.time)).forEach(task => {
+        list.innerHTML += renderTaskHTML(task);
     });
 }
 
 function toggleComplete(id) {
     let task = tasks.find(t => t.id === id);
     if(task) task.isCompleted = !task.isCompleted;
-    saveTasks(); renderTasks();
+    localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+    renderAllViews();
 }
 
 function deleteTask(id) {
-    if(confirm('Hapus tugas ini?')) {
+    if(confirm('Yakin ingin menghapus?')) {
         tasks = tasks.filter(t => t.id !== id);
-        saveTasks(); renderTasks();
+        localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+        renderAllViews();
     }
 }
 
-function editTask(id) {
-    let task = tasks.find(t => t.id === id);
-    if(task) {
-        let newText = prompt('Edit tugas:', task.text);
-        if(newText !== null && newText.trim() !== '') {
-            task.text = newText.trim();
-            saveTasks(); renderTasks();
-        }
-    }
-}
-
-function saveTasks() {
-    localStorage.setItem('tasks_v2', JSON.stringify(tasks));
-}
-
-// --- Filter & Navigasi ---
-function setFilter(filter) {
-    currentFilter = filter;
-    document.getElementById('mainSection').style.display = 'block';
-    document.getElementById('settingsSection').style.display = 'none';
-    
-    document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${filter}`).classList.add('active');
-    renderTasks();
-}
-
-function showSettings() {
-    document.getElementById('mainSection').style.display = 'none';
-    document.getElementById('settingsSection').style.display = 'block';
-    document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('tab-settings').classList.add('active');
-}
-
-// --- Kategori Custom ---
+// --- Kategori & Settings ---
 function addCategory() {
+    let icon = document.getElementById('newCatIcon').value.trim() || '📁';
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
     if(!name) return;
     
-    categories.push({ id: Date.now().toString(), name, color });
-    localStorage.setItem('categories', JSON.stringify(categories));
-    document.getElementById('newCatName').value = '';
+    categories.push({ id: Date.now().toString(), name, color, icon });
+    localStorage.setItem('categories_v3', JSON.stringify(categories));
+    document.getElementById('newCatName').value = ''; document.getElementById('newCatIcon').value = '';
     renderCategories();
 }
 
 function renderCategories() {
-    // Render di Select Input
     let select = document.getElementById('taskCategory');
     select.innerHTML = '';
     categories.forEach(c => {
         let opt = document.createElement('option');
-        opt.value = c.id; opt.textContent = c.name;
+        opt.value = c.id; opt.textContent = `${c.icon} ${c.name}`;
         select.appendChild(opt);
     });
 
-    // Render di Settings
     let list = document.getElementById('catList');
     list.innerHTML = '';
     categories.forEach((c, index) => {
-        let li = document.createElement('li');
-        li.style.flexDirection = 'row';
-        li.style.justifyContent = 'space-between';
-        li.innerHTML = `
-            <span class="badge" style="background: ${c.color}; font-size:14px;">${c.name}</span>
-            <button class="btn-icon" onclick="deleteCategory(${index})">🗑</button>
+        list.innerHTML += `
+            <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center;">
+                <span class="badge" style="background: ${c.color}; font-size:14px;">${c.icon} ${c.name}</span>
+                <button class="btn-icon" onclick="deleteCategory(${index})">🗑️</button>
+            </div>
         `;
-        list.appendChild(li);
     });
 }
 
 function deleteCategory(index) {
-    if(categories.length <= 1) return alert('Minimal harus ada 1 kategori!');
+    if(categories.length <= 1) return alert('Minimal 1 kategori!');
     categories.splice(index, 1);
-    localStorage.setItem('categories', JSON.stringify(categories));
-    renderCategories(); renderTasks();
+    localStorage.setItem('categories_v3', JSON.stringify(categories));
+    renderCategories(); renderAllViews();
 }
 
-// --- Pengaturan Lainnya (Dark Mode & Pengingat) ---
+// --- Dark Mode ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) {
@@ -172,28 +169,8 @@ function toggleDarkMode() {
 }
 
 function loadTheme() {
-    let theme = localStorage.getItem('theme');
-    if(theme === 'dark') {
+    if(localStorage.getItem('theme') === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         document.getElementById('darkModeToggle').checked = true;
     }
-}
-
-// Mengecek waktu setiap menit untuk memunculkan notifikasi
-function startAlarmChecker() {
-    setInterval(() => {
-        let now = new Date();
-        tasks.forEach(task => {
-            if (task.time && !task.isCompleted && !task.notified) {
-                let taskTime = new Date(task.time);
-                if (now >= taskTime) {
-                    if (Notification.permission === "granted") {
-                        new Notification("Pengingat Tugas!", { body: task.text });
-                    }
-                    task.notified = true; // Tandai agar tidak spam notif
-                    saveTasks();
-                }
-            }
-        });
-    }, 60000); // Cek setiap 60 detik
 }
