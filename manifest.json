@@ -1,0 +1,16 @@
+{
+  "name": "Catatan Tugas Saya",
+  "short_name": "Tugasku",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f4f9",
+  "theme_color": "#4CAF50",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1004/1004733.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
