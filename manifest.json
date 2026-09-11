@@ -1,15 +1,15 @@
 {
-  "name": "Catatan Tugas Saya",
+  "name": "Tugasku Pro",
   "short_name": "Tugasku",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4f4f9",
-  "theme_color": "#4CAF50",
+  "background_color": "#000000",
+  "theme_color": "#001f3f",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1004/1004733.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "https://img.magnific.com/free-photo/closeup-shot-crescent-moon_181624-43715.jpg?semt=ais_hybrid&w=740&q=80",
+      "sizes": "740x740",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]
