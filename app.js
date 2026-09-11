@@ -1,5 +1,8 @@
-let tasks = JSON.parse(localStorage.getItem('orbit_tasks_v5')) || [];
-let categories = JSON.parse(localStorage.getItem('orbit_cats_v5')) || [
+// PENTING: Ganti tulisan di bawah dengan URL dari Google Apps Script-mu!
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
+
+let tasks = [];
+let categories = [
     { id: '1', name: 'General', color: '#808080' },
     { id: '2', name: 'Work', color: '#0074D9' }
 ];
@@ -9,34 +12,58 @@ let selectedIcon = '✦';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
-    checkNotifStatus();
     renderIcons();
-    renderCategories();
-    renderAllViews();
+    
+    // Tarik data dari Google Sheets saat aplikasi pertama kali dibuka
+    fetchDataFromCloud();
 });
 
-// --- Modal Functions ---
-function openModal(id) {
-    document.getElementById(id).classList.add('active');
-}
-function closeModal(id) {
-    document.getElementById(id).classList.remove('active');
+// --- Cloud (Google Sheets) Functions ---
+function fetchDataFromCloud() {
+    let list = document.getElementById('allTaskList');
+    if(list) list.innerHTML = "<i>Memuat data dari Google Drive...</i>";
+    
+    fetch(CLOUD_URL)
+        .then(response => response.json())
+        .then(data => {
+            if (data.tasks) tasks = data.tasks;
+            if (data.categories && data.categories.length > 0) categories = data.categories;
+            renderCategories();
+            renderAllViews();
+        })
+        .catch(err => {
+            console.log("Gagal memuat", err);
+            if(list) list.innerHTML = "<i>Gagal memuat data. Pastikan ada koneksi internet.</i>";
+        });
 }
 
-// --- Navigation ---
+function saveDataToCloud() {
+    let payload = { tasks: tasks, categories: categories };
+    renderAllViews(); // Update layar langsung
+    
+    fetch(CLOUD_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }).catch(err => console.log("Gagal menyimpan ke cloud", err));
+}
+
+// --- Modals & Navigation ---
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
 function switchView(viewName) {
     document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${viewName}`).classList.add('active');
     
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    if(viewName !== 'settings') {
-        document.getElementById(`nav-${viewName}`).classList.add('active');
-    }
+    if(viewName !== 'settings') { document.getElementById(`nav-${viewName}`).classList.add('active'); }
     renderAllViews();
 }
 
+// --- Icons & Tasks ---
 function renderIcons() {
     let grid = document.getElementById('taskIconGrid');
+    if(!grid) return;
     grid.innerHTML = '';
     icons.forEach(icon => {
         let div = document.createElement('div');
@@ -47,29 +74,22 @@ function renderIcons() {
     });
 }
 
-// --- Task Functions (Dengan Format Waktu Baru) ---
 function addTask() {
     let title = document.getElementById('taskInput').value.trim();
     let desc = document.getElementById('taskDesc').value.trim();
-    let date = document.getElementById('taskDate').value;
-    let timeStr = document.getElementById('taskTime').value; // Hanya Jam & Menit
+    let time = document.getElementById('taskTime').value;
     let catId = document.getElementById('taskCategory').value;
     
-    if (!title || !date || !timeStr) return alert('Task Title, Date, and Time are required!');
+    if (!title || !time) return alert('Task Title and Time are required!');
 
-    // Gabungkan tanggal dan waktu
-    let fullTime = `${date}T${timeStr}`;
-
-    tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time: fullTime, categoryId: catId, isCompleted: false });
-    localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
+    tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
     
     document.getElementById('taskInput').value = '';
     document.getElementById('taskDesc').value = '';
-    document.getElementById('taskDate').value = '';
     document.getElementById('taskTime').value = '';
     
     closeModal('taskModal');
-    renderAllViews();
+    saveDataToCloud();
 }
 
 function renderAllViews() {
@@ -102,6 +122,8 @@ function renderHomeTimeline() {
     let tomorrowBox = document.querySelector('#timelineTomorrow .list');
     let nextWeekBox = document.querySelector('#timelineNextWeek .list');
     
+    if(!todayBox || !tomorrowBox || !nextWeekBox) return;
+    
     todayBox.innerHTML = ''; tomorrowBox.innerHTML = ''; nextWeekBox.innerHTML = '';
     
     let now = new Date();
@@ -121,6 +143,7 @@ function renderHomeTimeline() {
 
 function renderAllTasks() {
     let list = document.getElementById('allTaskList');
+    if(!list) return;
     list.innerHTML = '';
     tasks.sort((a,b) => new Date(a.time) - new Date(b.time)).forEach(task => {
         list.innerHTML += renderTaskHTML(task);
@@ -129,60 +152,60 @@ function renderAllTasks() {
 
 function toggleComplete(id) {
     let task = tasks.find(t => t.id === id);
-    if(task) task.isCompleted = !task.isCompleted;
-    localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
-    renderAllViews();
+    if(task) { task.isCompleted = !task.isCompleted; saveDataToCloud(); }
 }
 
 function deleteTask(id) {
     if(confirm('Are you sure you want to delete this task?')) {
         tasks = tasks.filter(t => t.id !== id);
-        localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
-        renderAllViews();
+        saveDataToCloud();
     }
 }
 
-// --- Category Functions ---
+// --- Categories ---
 function addCategory() {
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
     if(!name) return alert('Category name cannot be empty!');
     
     categories.push({ id: Date.now().toString(), name, color });
-    localStorage.setItem('orbit_cats_v5', JSON.stringify(categories));
     document.getElementById('newCatName').value = '';
     renderCategories();
+    saveDataToCloud();
 }
 
 function renderCategories() {
     let select = document.getElementById('taskCategory');
-    select.innerHTML = '';
-    categories.forEach(c => {
-        let opt = document.createElement('option');
-        opt.value = c.id; opt.textContent = c.name;
-        select.appendChild(opt);
-    });
+    if(select) {
+        select.innerHTML = '';
+        categories.forEach(c => {
+            let opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name;
+            select.appendChild(opt);
+        });
+    }
 
     let list = document.getElementById('catList');
-    list.innerHTML = '';
-    categories.forEach((c, index) => {
-        list.innerHTML += `
-            <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding: 10px;">
-                <span class="badge" style="background: ${c.color}; font-size:13px;">${c.name}</span>
-                <button class="btn-icon" onclick="deleteCategory(${index})">✕</button>
-            </div>
-        `;
-    });
+    if(list) {
+        list.innerHTML = '';
+        categories.forEach((c, index) => {
+            list.innerHTML += `
+                <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding: 10px;">
+                    <span class="badge" style="background: ${c.color}; font-size:13px;">${c.name}</span>
+                    <button class="btn-icon" onclick="deleteCategory(${index})">✕</button>
+                </div>
+            `;
+        });
+    }
 }
 
 function deleteCategory(index) {
     if(categories.length <= 1) return alert('You must have at least 1 category!');
     categories.splice(index, 1);
-    localStorage.setItem('orbit_cats_v5', JSON.stringify(categories));
-    renderCategories(); renderAllViews();
+    renderCategories(); renderAllViews(); saveDataToCloud();
 }
 
-// --- Settings Logic ---
+// --- Dark Mode ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) {
@@ -197,34 +220,7 @@ function toggleDarkMode() {
 function loadTheme() {
     if(localStorage.getItem('theme') === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        document.getElementById('darkModeToggle').checked = true;
-    }
-}
-
-function requestNotifications() {
-    let isChecked = document.getElementById('notifToggle').checked;
-    if (isChecked) {
-        if (Notification.permission !== "granted") {
-            Notification.requestPermission().then(permission => {
-                if (permission !== "granted") {
-                    alert("Notification permission denied by browser.");
-                    document.getElementById('notifToggle').checked = false;
-                }
-            });
-        }
-    }
-}
-
-function checkNotifStatus() {
-    if (Notification.permission === "granted") {
-        document.getElementById('notifToggle').checked = true;
-    }
-}
-
-function clearAllData() {
-    if(confirm("WARNING: This will permanently delete ALL tasks and custom categories. Are you absolutely sure?")) {
-        localStorage.clear();
-        alert("All data has been cleared. The app will now reload.");
-        window.location.reload();
+        let toggle = document.getElementById('darkModeToggle');
+        if(toggle) toggle.checked = true;
     }
 }
