@@ -39,7 +39,7 @@
         .icon-option { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 18px; cursor: pointer; }
         .icon-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .toggle-wrap { display: flex; align-items: center; gap: 15px; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        .toggle-wrap { display: flex; align-items: center; gap: 15px; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -86,6 +86,10 @@
             </label>
             <span style="font-size: 14px; font-weight: bold;">Dark Mode</span>
         </div>
+        
+        <!-- Tombol Kategori dikembalikan ke Settings -->
+        <h3>Data & Categories</h3>
+        <button class="btn-outline" onclick="openModal('categoryModal')">✦ Manage Categories</button>
     </main>
 
     <nav>
@@ -113,7 +117,6 @@
                 <select id="taskCategory" style="flex: 1;"></select>
             </div>
             
-            <button class="btn-outline" onclick="openModal('categoryModal')">✦ Manage Categories</button>
             <button class="btn-main" onclick="saveTask()">Save Task</button>
         </div>
     </div>
