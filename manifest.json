@@ -1,6 +1,6 @@
 {
-  "name": "Tugasku Pro",
-  "short_name": "Tugasku",
+  "name": "Orbit Task Manager",
+  "short_name": "Orbit",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
