@@ -7,10 +7,10 @@
     <link rel="manifest" href="manifest.json">
     <style>
         :root {
-            --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #0074D9;
+            --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #0074D9; --danger: #ff4d4d;
         }
         [data-theme="dark"] {
-            --bg: #000000; --text: #e0e0e0; --card: #001f3f; --border: #003366; --primary: #0074D9;
+            --bg: #000000; --text: #e0e0e0; --card: #001f3f; --border: #003366; --primary: #0074D9; --danger: #ff6666;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
@@ -26,15 +26,15 @@
         .nav-item.active { opacity: 1; color: var(--primary); font-weight: bold; }
         .nav-icon { font-size: 20px; }
         
-        /* Floating Add Button in Nav */
-        .btn-add-float { width: 50px; height: 50px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 28px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,116,217,0.4); transform: translateY(-10px); }
+        /* Floating Add Button in Nav (Z-index dinaikkan agar pasti bisa diklik) */
+        .btn-add-float { width: 55px; height: 55px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,116,217,0.4); transform: translateY(-15px); z-index: 20; position: relative; }
 
         /* Main Content */
         .container { padding: 15px; max-width: 600px; margin: auto; display: none; }
         .container.active { display: block; }
-        h3 { margin: 15px 0 10px 0; font-size: 14px; opacity: 0.7; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        h3 { margin: 15px 0 10px 0; font-size: 13px; opacity: 0.7; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Modals (Pop-ups) */
+        /* Modals */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: flex-end; z-index: 100; backdrop-filter: blur(2px); }
         .modal-overlay.active { display: flex; }
         .modal-content { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px 16px 0 0; padding: 20px; animation: slideUp 0.3s ease; max-height: 90vh; overflow-y: auto; }
@@ -48,13 +48,15 @@
         .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
         .btn-outline { width: 100%; padding: 12px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
 
-        /* Icon Grid Selector */
+        /* Icon Grid */
         .icon-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
         .icon-option { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 18px; cursor: pointer; }
         .icon-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* Custom Toggle Switch for Dark Mode */
-        .toggle-wrap { display: flex; align-items: center; gap: 15px; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        /* Toggle Switch & Settings Card */
+        .setting-card { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; }
+        .setting-info { display: flex; align-items: center; gap: 15px; font-size: 16px; font-weight: bold; }
+        
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -94,16 +96,39 @@
         <div id="allTaskList"></div>
     </main>
 
-    <!-- SETTINGS VIEW -->
+    <!-- SETTINGS VIEW (Diperbarui menyerupai aplikasi asli) -->
     <main id="view-settings" class="container">
+        <h3>Account & Data</h3>
+        <div class="setting-card">
+            <div class="setting-info"><span>👤</span> Storage Mode</div>
+            <span style="font-size: 13px; color: #888;">Local Offline</span>
+        </div>
+
         <h3>Appearance</h3>
-        <div class="toggle-wrap">
-            <span style="font-size: 20px;">🌙</span>
+        <div class="setting-card">
+            <div class="setting-info"><span>🌙</span> Dark Mode</div>
             <label class="switch">
                 <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
                 <span class="slider"></span>
             </label>
-            <span style="font-size: 14px; font-weight: bold;">Dark Mode</span>
+        </div>
+
+        <h3>Notifications</h3>
+        <div class="setting-card">
+            <div class="setting-info"><span>🔔</span> Task Reminders</div>
+            <label class="switch">
+                <input type="checkbox" id="notifToggle" onchange="requestNotifications()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <h3>Advanced</h3>
+        <button class="btn-outline" style="color: var(--danger); border-color: var(--danger); text-align: left;" onclick="clearAllData()">
+            🗑️ Clear All App Data (Reset)
+        </button>
+
+        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #888;">
+            Orbit Task Manager<br>Version 5.0.0
         </div>
     </main>
 
@@ -118,7 +143,7 @@
         </button>
     </nav>
 
-    <!-- ADD TASK MODAL (POP-UP) -->
+    <!-- ADD TASK MODAL -->
     <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -126,23 +151,26 @@
                 <button class="close-btn" onclick="closeModal('taskModal')">✕</button>
             </div>
             
-            <label>Select Icon:</label>
+            <label style="font-size: 14px; color: #888; margin-bottom: 5px; display: block;">Select Icon:</label>
             <div class="icon-grid" id="taskIconGrid"></div>
             
             <input type="text" id="taskInput" placeholder="Task Title...">
             <textarea id="taskDesc" placeholder="Additional Notes..."></textarea>
             
+            <!-- Perubahan Waktu: Dipisah menjadi Tanggal dan Jam (Tanpa detik) -->
             <div style="display: flex; gap: 10px;">
-                <input type="datetime-local" id="taskTime" style="flex: 1;">
-                <select id="taskCategory" style="flex: 1;"></select>
+                <input type="date" id="taskDate" style="flex: 1;" title="Task Date">
+                <input type="time" id="taskTime" style="flex: 1;" title="Task Time">
             </div>
+            
+            <select id="taskCategory"></select>
             
             <button class="btn-outline" onclick="openModal('categoryModal')">✦ Manage Categories</button>
             <button class="btn-main" onclick="addTask()">Save Task</button>
         </div>
     </div>
 
-    <!-- MANAGE CATEGORY MODAL (POP-UP) -->
+    <!-- MANAGE CATEGORY MODAL -->
     <div id="categoryModal" class="modal-overlay" style="z-index: 101;">
         <div class="modal-content">
             <div class="modal-header">
