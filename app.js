@@ -1,5 +1,14 @@
-// PENTING: Ganti tulisan di bawah dengan URL dari Google Apps Script-mu!
+// PENTING: Ganti dengan URL dari Google Apps Script-mu!
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
+
+// --- 1. PENGHANCUR CACHE LAMA (Wajib ada agar tidak nge-bug) ---
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister(); // Membunuh sistem offline lama
+        }
+    });
+}
 
 let tasks = [];
 let categories = [
@@ -13,12 +22,10 @@ let selectedIcon = '✦';
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     renderIcons();
-    
-    // Tarik data dari Google Sheets saat aplikasi pertama kali dibuka
     fetchDataFromCloud();
 });
 
-// --- Cloud (Google Sheets) Functions ---
+// --- 2. CLOUD SYSTEM (Google Sheets) ---
 function fetchDataFromCloud() {
     let list = document.getElementById('allTaskList');
     if(list) list.innerHTML = "<i>Memuat data dari Google Drive...</i>";
@@ -26,28 +33,31 @@ function fetchDataFromCloud() {
     fetch(CLOUD_URL)
         .then(response => response.json())
         .then(data => {
-            if (data.tasks) tasks = data.tasks;
-            if (data.categories && data.categories.length > 0) categories = data.categories;
+            if (data && Array.isArray(data.tasks)) tasks = data.tasks;
+            if (data && Array.isArray(data.categories) && data.categories.length > 0) categories = data.categories;
             renderCategories();
             renderAllViews();
         })
         .catch(err => {
-            console.log("Gagal memuat", err);
-            if(list) list.innerHTML = "<i>Gagal memuat data. Pastikan ada koneksi internet.</i>";
+            console.log("Info: Memuat data lokal karena cloud belum tersambung.", err);
+            renderCategories();
+            renderAllViews();
         });
 }
 
 function saveDataToCloud() {
     let payload = { tasks: tasks, categories: categories };
-    renderAllViews(); // Update layar langsung
+    renderAllViews(); // Update UI di layar HP langsung
     
+    // Bypass CORS Google Sheets
     fetch(CLOUD_URL, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
         body: JSON.stringify(payload)
     }).catch(err => console.log("Gagal menyimpan ke cloud", err));
 }
 
-// --- Modals & Navigation ---
+// --- 3. FUNGSI NAVIGASI & MODAL ---
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
@@ -60,7 +70,7 @@ function switchView(viewName) {
     renderAllViews();
 }
 
-// --- Icons & Tasks ---
+// --- 4. FUNGSI TUGAS ---
 function renderIcons() {
     let grid = document.getElementById('taskIconGrid');
     if(!grid) return;
@@ -80,7 +90,7 @@ function addTask() {
     let time = document.getElementById('taskTime').value;
     let catId = document.getElementById('taskCategory').value;
     
-    if (!title || !time) return alert('Task Title and Time are required!');
+    if (!title || !time) return alert('Judul dan Waktu Tugas wajib diisi!');
 
     tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
     
@@ -90,6 +100,7 @@ function addTask() {
     
     closeModal('taskModal');
     saveDataToCloud();
+    alert('Tugas berhasil dicatat!');
 }
 
 function renderAllViews() {
@@ -156,25 +167,46 @@ function toggleComplete(id) {
 }
 
 function deleteTask(id) {
-    if(confirm('Are you sure you want to delete this task?')) {
+    if(confirm('Yakin ingin menghapus tugas ini?')) {
         tasks = tasks.filter(t => t.id !== id);
         saveDataToCloud();
     }
 }
 
-// --- Categories ---
+// --- 5. FUNGSI KATEGORI (SUPER AMAN) ---
 function addCategory() {
-    let name = document.getElementById('newCatName').value.trim();
-    let color = document.getElementById('newCatColor').value;
-    if(!name) return alert('Category name cannot be empty!');
-    
-    categories.push({ id: Date.now().toString(), name, color });
-    document.getElementById('newCatName').value = '';
-    renderCategories();
-    saveDataToCloud();
+    try {
+        let nameInput = document.getElementById('newCatName');
+        let colorInput = document.getElementById('newCatColor');
+        
+        if(!nameInput || !colorInput) {
+            return alert("Error form tidak ditemukan! Coba refresh.");
+        }
+        
+        let name = nameInput.value.trim();
+        let color = colorInput.value;
+        
+        if(!name) return alert('Nama kategori tidak boleh kosong ya!');
+        
+        // Cek darurat kalau categories rusak dari cloud
+        if(!Array.isArray(categories)) categories = []; 
+        
+        categories.push({ id: Date.now().toString(), name: name, color: color });
+        nameInput.value = ''; // Kosongkan form
+        
+        renderCategories();
+        saveDataToCloud();
+        
+        // Notifikasi agar tahu tombol berhasil ditekan
+        alert("Kategori '" + name + "' berhasil ditambahkan!"); 
+    } catch(error) {
+        alert("Aduh, ada error: " + error.message);
+    }
 }
 
 function renderCategories() {
+    if(!Array.isArray(categories)) categories = [];
+    
     let select = document.getElementById('taskCategory');
     if(select) {
         select.innerHTML = '';
@@ -200,12 +232,12 @@ function renderCategories() {
 }
 
 function deleteCategory(index) {
-    if(categories.length <= 1) return alert('You must have at least 1 category!');
+    if(categories.length <= 1) return alert('Kamu harus menyisakan minimal 1 kategori!');
     categories.splice(index, 1);
     renderCategories(); renderAllViews(); saveDataToCloud();
 }
 
-// --- Dark Mode ---
+// --- 6. DARK MODE ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) {
