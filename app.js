@@ -1,16 +1,29 @@
-let tasks = JSON.parse(localStorage.getItem('tasks_v3')) || [];
-let categories = JSON.parse(localStorage.getItem('categories_v3')) || [
-    { id: '1', name: 'Umum', color: '#808080', icon: '📌' },
-    { id: '2', name: 'Kerja', color: '#0074D9', icon: '💼' }
+let tasks = JSON.parse(localStorage.getItem('orbit_tasks_v4')) || [];
+let categories = JSON.parse(localStorage.getItem('orbit_cats_v4')) || [
+    { id: '1', name: 'General', color: '#808080' },
+    { id: '2', name: 'Work', color: '#0074D9' }
 ];
+
+// Minimalist Icons Set
+const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
+let selectedIcon = '✦';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
+    renderIcons();
     renderCategories();
     renderAllViews();
 });
 
-// --- Navigasi Ala Instagram ---
+// --- Modal (Pop-up) Functions ---
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// --- Navigation ---
 function switchView(viewName) {
     document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${viewName}`).classList.add('active');
@@ -22,25 +35,39 @@ function switchView(viewName) {
     renderAllViews();
 }
 
-// --- Fungsi Tugas ---
+// --- Icon Selection Logic ---
+function renderIcons() {
+    let grid = document.getElementById('taskIconGrid');
+    grid.innerHTML = '';
+    icons.forEach(icon => {
+        let div = document.createElement('div');
+        div.className = `icon-option ${icon === selectedIcon ? 'selected' : ''}`;
+        div.textContent = icon;
+        div.onclick = () => {
+            selectedIcon = icon;
+            renderIcons(); // Re-render to update selected class
+        };
+        grid.appendChild(div);
+    });
+}
+
+// --- Task Functions ---
 function addTask() {
     let title = document.getElementById('taskInput').value.trim();
     let desc = document.getElementById('taskDesc').value.trim();
-    let icon = document.getElementById('taskIcon').value.trim() || '📝';
     let time = document.getElementById('taskTime').value;
     let catId = document.getElementById('taskCategory').value;
     
-    if (!title || !time) return alert('Judul dan Waktu (Tanggal/Jam) wajib diisi!');
+    if (!title || !time) return alert('Task Title and Time are required!');
 
-    tasks.push({ id: Date.now().toString(), title, desc, icon, time, categoryId: catId, isCompleted: false });
-    localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+    tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
+    localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
     
     document.getElementById('taskInput').value = '';
     document.getElementById('taskDesc').value = '';
-    document.getElementById('taskIcon').value = '';
     document.getElementById('taskTime').value = '';
     
-    alert('Tugas ditambahkan!');
+    closeModal('taskModal');
     renderAllViews();
 }
 
@@ -51,25 +78,25 @@ function renderAllViews() {
 
 function renderTaskHTML(task) {
     let cat = categories.find(c => c.id === task.categoryId) || categories[0];
-    let timeText = new Date(task.time).toLocaleString('id-ID', {day: 'numeric', month:'short', hour: '2-digit', minute:'2-digit'});
+    let timeText = new Date(task.time).toLocaleString('en-US', {day: 'numeric', month:'short', hour: '2-digit', minute:'2-digit'});
     
     return `
         <div class="task-card ${task.isCompleted ? 'completed' : ''}">
             <div class="task-header">
                 <div class="task-title"><span>${task.icon}</span> ${task.title}</div>
-                <span class="badge" style="background: ${cat.color}">${cat.icon} ${cat.name}</span>
+                <span class="badge" style="background: ${cat.color}">${cat.name}</span>
             </div>
             ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
-            <div class="task-time">⏰ ${timeText}</div>
+            <div class="task-time">${timeText}</div>
             <div class="actions">
-                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${task.isCompleted ? '↩️ Batal' : '✅ Selesai'}</button>
-                <button class="btn-icon" onclick="deleteTask('${task.id}')">🗑️ Hapus</button>
+                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${task.isCompleted ? 'Undo' : 'Done ✓'}</button>
+                <button class="btn-icon" onclick="deleteTask('${task.id}')">Delete ✕</button>
             </div>
         </div>
     `;
 }
 
-// --- Logika Waktu (Hari Ini, Besok, Nanti) ---
+// --- Timeline Logic ---
 function renderHomeTimeline() {
     let todayBox = document.querySelector('#timelineToday .list');
     let tomorrowBox = document.querySelector('#timelineTomorrow .list');
@@ -79,7 +106,7 @@ function renderHomeTimeline() {
     
     let now = new Date();
     let today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    let tomorrow = today + (86400000); // +1 hari
+    let tomorrow = today + (86400000); 
     
     tasks.filter(t => !t.isCompleted).sort((a,b) => new Date(a.time) - new Date(b.time)).forEach(task => {
         let tDate = new Date(task.time);
@@ -103,28 +130,27 @@ function renderAllTasks() {
 function toggleComplete(id) {
     let task = tasks.find(t => t.id === id);
     if(task) task.isCompleted = !task.isCompleted;
-    localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+    localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
     renderAllViews();
 }
 
 function deleteTask(id) {
-    if(confirm('Yakin ingin menghapus?')) {
+    if(confirm('Are you sure you want to delete this task?')) {
         tasks = tasks.filter(t => t.id !== id);
-        localStorage.setItem('tasks_v3', JSON.stringify(tasks));
+        localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
         renderAllViews();
     }
 }
 
-// --- Kategori & Settings ---
+// --- Category Functions ---
 function addCategory() {
-    let icon = document.getElementById('newCatIcon').value.trim() || '📁';
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
-    if(!name) return;
+    if(!name) return alert('Category name cannot be empty!');
     
-    categories.push({ id: Date.now().toString(), name, color, icon });
-    localStorage.setItem('categories_v3', JSON.stringify(categories));
-    document.getElementById('newCatName').value = ''; document.getElementById('newCatIcon').value = '';
+    categories.push({ id: Date.now().toString(), name, color });
+    localStorage.setItem('orbit_cats_v4', JSON.stringify(categories));
+    document.getElementById('newCatName').value = '';
     renderCategories();
 }
 
@@ -133,7 +159,7 @@ function renderCategories() {
     select.innerHTML = '';
     categories.forEach(c => {
         let opt = document.createElement('option');
-        opt.value = c.id; opt.textContent = `${c.icon} ${c.name}`;
+        opt.value = c.id; opt.textContent = c.name;
         select.appendChild(opt);
     });
 
@@ -141,18 +167,18 @@ function renderCategories() {
     list.innerHTML = '';
     categories.forEach((c, index) => {
         list.innerHTML += `
-            <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center;">
-                <span class="badge" style="background: ${c.color}; font-size:14px;">${c.icon} ${c.name}</span>
-                <button class="btn-icon" onclick="deleteCategory(${index})">🗑️</button>
+            <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding: 10px;">
+                <span class="badge" style="background: ${c.color}; font-size:13px;">${c.name}</span>
+                <button class="btn-icon" onclick="deleteCategory(${index})">✕</button>
             </div>
         `;
     });
 }
 
 function deleteCategory(index) {
-    if(categories.length <= 1) return alert('Minimal 1 kategori!');
+    if(categories.length <= 1) return alert('You must have at least 1 category!');
     categories.splice(index, 1);
-    localStorage.setItem('categories_v3', JSON.stringify(categories));
+    localStorage.setItem('orbit_cats_v4', JSON.stringify(categories));
     renderCategories(); renderAllViews();
 }
 
