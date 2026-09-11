@@ -1,119 +1,167 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tugasku Pro</title>
+    <title>Orbit</title>
     <link rel="manifest" href="manifest.json">
     <style>
         :root {
-            --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #4CAF50;
+            --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #0074D9;
         }
-        /* Dark Mode: Black & Navy Blue */
         [data-theme="dark"] {
             --bg: #000000; --text: #e0e0e0; --card: #001f3f; --border: #003366; --primary: #0074D9;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background: var(--bg); color: var(--text); padding-top: 60px; padding-bottom: 70px; transition: 0.3s; }
+        body { background: var(--bg); color: var(--text); padding-top: 60px; padding-bottom: 80px; transition: 0.3s; }
         
-        /* Header Top */
-        header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; font-size: 20px; font-weight: bold; }
+        /* Header */
+        header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
         .btn-settings { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text); }
 
-        /* Bottom Navigation (Instagram Style) */
-        nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
-        .nav-item { background: none; border: none; font-size: 16px; color: var(--text); display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.5; width: 100%; height: 100%; justify-content: center; }
-        .nav-item.active { opacity: 1; border-top: 3px solid var(--primary); font-weight: bold; }
+        /* Bottom Navigation */
+        nav { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+        .nav-item { background: none; border: none; font-size: 14px; color: var(--text); display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.5; width: 30%; height: 100%; justify-content: center; gap: 4px; }
+        .nav-item.active { opacity: 1; color: var(--primary); font-weight: bold; }
+        .nav-icon { font-size: 20px; }
+        
+        /* Floating Add Button in Nav */
+        .btn-add-float { width: 50px; height: 50px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 28px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,116,217,0.4); transform: translateY(-10px); }
 
         /* Main Content */
         .container { padding: 15px; max-width: 600px; margin: auto; display: none; }
         .container.active { display: block; }
-        
-        h3 { margin: 15px 0 10px 0; font-size: 16px; opacity: 0.8; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        h3 { margin: 15px 0 10px 0; font-size: 14px; opacity: 0.7; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Modals (Pop-ups) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: flex-end; z-index: 100; backdrop-filter: blur(2px); }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px 16px 0 0; padding: 20px; animation: slideUp 0.3s ease; max-height: 90vh; overflow-y: auto; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .close-btn { background: var(--border); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--text); font-weight: bold; }
 
         /* Forms */
-        .input-group { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
-        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 6px; }
-        textarea { resize: vertical; min-height: 60px; }
-        .btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .row { display: flex; gap: 10px; }
-        .row > * { flex: 1; }
-        
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; font-size: 14px; }
+        textarea { resize: vertical; min-height: 80px; }
+        .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .btn-outline { width: 100%; padding: 12px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
+
+        /* Icon Grid Selector */
+        .icon-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        .icon-option { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 18px; cursor: pointer; }
+        .icon-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Custom Toggle Switch for Dark Mode */
+        .toggle-wrap { display: flex; align-items: center; gap: 15px; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
         /* Task Cards */
-        .task-card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .task-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
         .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .task-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .task-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; }
         .completed .task-title { text-decoration: line-through; opacity: 0.5; }
-        .task-desc { font-size: 13px; color: #aaa; margin: 5px 0; }
-        .badge { font-size: 12px; padding: 4px 8px; border-radius: 12px; color: white; display: inline-flex; align-items: center; gap: 5px; }
-        .task-time { font-size: 12px; font-weight: bold; color: var(--primary); }
+        .task-desc { font-size: 13px; color: #888; }
+        .badge { font-size: 11px; padding: 4px 8px; border-radius: 12px; color: white; display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .task-time { font-size: 12px; font-weight: bold; color: var(--primary); margin-top: 5px; }
         .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px; }
-        .btn-icon { background: var(--bg); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text); }
+        .btn-icon { background: var(--bg); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px; }
     </style>
 </head>
 <body>
 
     <header>
-        <div>🌙 Tugasku</div>
+        <div>Orbit ✦</div>
         <button class="btn-settings" onclick="switchView('settings')">⚙️</button>
     </header>
 
-    <!-- HALAMAN HOME (Timeline Tugas) -->
+    <!-- HOME VIEW -->
     <main id="view-home" class="container active">
-        <div id="timelineToday"><h3>Hari Ini</h3><div class="list"></div></div>
-        <div id="timelineTomorrow"><h3>Besok</h3><div class="list"></div></div>
-        <div id="timelineNextWeek"><h3>Minggu Depan & Nanti</h3><div class="list"></div></div>
+        <div id="timelineToday"><h3>Today</h3><div class="list"></div></div>
+        <div id="timelineTomorrow"><h3>Tomorrow</h3><div class="list"></div></div>
+        <div id="timelineNextWeek"><h3>Next Week & Later</h3><div class="list"></div></div>
     </main>
 
-    <!-- HALAMAN SEMUA TUGAS (Tambah & Edit) -->
+    <!-- ALL TASKS VIEW -->
     <main id="view-all" class="container">
-        <div class="input-group">
-            <div class="row">
-                <input type="text" id="taskIcon" placeholder="Ikon (Emoji)" maxlength="2" style="flex: 0.3; text-align: center;">
-                <input type="text" id="taskInput" placeholder="Judul Tugas...">
-            </div>
-            <textarea id="taskDesc" placeholder="Catatan/Deskripsi..."></textarea>
-            <div class="row">
-                <input type="datetime-local" id="taskTime">
-                <select id="taskCategory"></select>
-            </div>
-            <button class="btn-main" onclick="addTask()">+ Tambah Tugas</button>
-        </div>
-        <h3>Daftar Semua Tugas</h3>
+        <h3>All Tasks</h3>
         <div id="allTaskList"></div>
     </main>
 
-    <!-- HALAMAN PENGATURAN -->
+    <!-- SETTINGS VIEW -->
     <main id="view-settings" class="container">
-        <h3>Pengaturan Aplikasi</h3>
-        <div class="input-group">
-            <label style="display: flex; align-items: center; gap: 10px; font-size: 16px;">
-                <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()" style="width: 24px; height: 24px; margin: 0;"> 
-                Gunakan Dark Mode (Black/Navy)
+        <h3>Appearance</h3>
+        <div class="toggle-wrap">
+            <span style="font-size: 20px;">🌙</span>
+            <label class="switch">
+                <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                <span class="slider"></span>
             </label>
+            <span style="font-size: 14px; font-weight: bold;">Dark Mode</span>
         </div>
-        
-        <h3>Kategori Tugas</h3>
-        <div class="input-group">
-            <div class="row">
-                <input type="text" id="newCatIcon" placeholder="Ikon (Emoji)" maxlength="2" style="flex: 0.3; text-align: center;">
-                <input type="text" id="newCatName" placeholder="Nama Kategori Baru">
-            </div>
-            <input type="color" id="newCatColor" value="#0074D9" style="height: 40px; padding: 2px;">
-            <button class="btn-main" onclick="addCategory()">Buat Kategori</button>
-        </div>
-        <div id="catList" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </main>
 
+    <!-- BOTTOM NAVIGATION -->
     <nav>
         <button id="nav-home" class="nav-item active" onclick="switchView('home')">
-            <span style="font-size: 20px;">🏠</span> Home
+            <span class="nav-icon">🏠</span> Home
         </button>
+        <button class="btn-add-float" onclick="openModal('taskModal')">+</button>
         <button id="nav-all" class="nav-item" onclick="switchView('all')">
-            <span style="font-size: 20px;">📋</span> Semua Tugas
+            <span class="nav-icon">📋</span> All Tasks
         </button>
     </nav>
+
+    <!-- ADD TASK MODAL (POP-UP) -->
+    <div id="taskModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Task</h2>
+                <button class="close-btn" onclick="closeModal('taskModal')">✕</button>
+            </div>
+            
+            <label>Select Icon:</label>
+            <div class="icon-grid" id="taskIconGrid"></div>
+            
+            <input type="text" id="taskInput" placeholder="Task Title...">
+            <textarea id="taskDesc" placeholder="Additional Notes..."></textarea>
+            
+            <div style="display: flex; gap: 10px;">
+                <input type="datetime-local" id="taskTime" style="flex: 1;">
+                <select id="taskCategory" style="flex: 1;"></select>
+            </div>
+            
+            <button class="btn-outline" onclick="openModal('categoryModal')">✦ Manage Categories</button>
+            <button class="btn-main" onclick="addTask()">Save Task</button>
+        </div>
+    </div>
+
+    <!-- MANAGE CATEGORY MODAL (POP-UP) -->
+    <div id="categoryModal" class="modal-overlay" style="z-index: 101;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Categories</h2>
+                <button class="close-btn" onclick="closeModal('categoryModal')">✕</button>
+            </div>
+            
+            <div style="background: var(--bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <input type="text" id="newCatName" placeholder="New Category Name...">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 14px;">Color:</label>
+                    <input type="color" id="newCatColor" value="#0074D9" style="height: 40px; padding: 2px; width: 60px; margin: 0;">
+                </div>
+                <button class="btn-main" onclick="addCategory()">Add Category</button>
+            </div>
+
+            <div id="catList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
