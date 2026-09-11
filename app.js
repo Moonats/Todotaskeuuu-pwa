@@ -1,11 +1,8 @@
 // GANTI DENGAN URL GOOGLE APPS SCRIPT-MU!
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
+const CLOUD_URL = const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
 
 let tasks = [];
-let categories = [
-    { id: '1', name: 'General', color: '#808080' },
-    { id: '2', name: 'Work', color: '#0074D9' }
-];
+let categories = []; 
 
 const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
 let selectedIcon = '✦';
@@ -26,12 +23,22 @@ function fetchDataFromCloud() {
         .then(response => response.json())
         .then(data => {
             if (data && Array.isArray(data.tasks)) tasks = data.tasks;
-            if (data && Array.isArray(data.categories) && data.categories.length > 0) categories = data.categories;
+            
+            // Jaminan Kategori Tidak Kosong
+            if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+                categories = data.categories;
+            } else {
+                categories = [
+                    { id: '1', name: 'General', color: '#808080' },
+                    { id: '2', name: 'Work', color: '#0074D9' }
+                ];
+            }
             renderCategories();
             renderAllViews();
         })
         .catch(err => {
             console.log("Memuat lokal", err);
+            if(categories.length === 0) categories = [{ id: '1', name: 'General', color: '#808080' }];
             renderCategories(); renderAllViews();
         });
 }
@@ -50,15 +57,19 @@ function saveDataToCloud() {
 // --- NAV & MODALS ---
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
 function switchView(viewName) {
     document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${viewName}`).classList.add('active');
+    
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    if(viewName !== 'settings') document.getElementById(`nav-${viewName}`).classList.add('active');
+    let activeNav = document.getElementById(`nav-${viewName}`);
+    if(activeNav) activeNav.classList.add('active');
+    
     renderAllViews();
 }
 
-// --- TASK FUNCTIONS ---
+// --- FUNGSI TUGAS ---
 function renderIcons() {
     let grid = document.getElementById('taskIconGrid');
     if(!grid) return;
@@ -78,7 +89,11 @@ function openNewTaskModal() {
     document.getElementById('taskInput').value = '';
     document.getElementById('taskDesc').value = '';
     document.getElementById('taskTime').value = '';
-    selectedIcon = '✦'; renderIcons();
+    selectedIcon = '✦'; 
+    
+    renderIcons();
+    renderCategories(); // MEMAKSA DROPDOWN TERISI SETIAP KALI TOMBOL (+) DITEKAN
+    
     openModal('taskModal');
 }
 
@@ -91,9 +106,10 @@ function editTask(id) {
     document.getElementById('taskInput').value = task.title;
     document.getElementById('taskDesc').value = task.desc || '';
     document.getElementById('taskTime').value = task.time || '';
-    
     selectedIcon = task.icon || '✦';
+    
     renderIcons();
+    renderCategories(); // MEMAKSA DROPDOWN TERISI
     
     let catSelect = document.getElementById('taskCategory');
     if(catSelect) catSelect.value = task.categoryId;
@@ -110,7 +126,7 @@ function saveTask() {
         let desc = document.getElementById('taskDesc').value.trim();
         let time = document.getElementById('taskTime').value;
         let catSelect = document.getElementById('taskCategory');
-        let catId = catSelect ? catSelect.value : (categories[0] ? categories[0].id : '1');
+        let catId = catSelect ? catSelect.value : categories[0].id;
         
         if (!title) return alert('Judul tugas wajib diisi!'); 
 
@@ -128,24 +144,19 @@ function saveTask() {
         
         closeModal('taskModal');
         saveDataToCloud();
-        
-        titleInput.value = '';
-        document.getElementById('taskDesc').value = '';
-        document.getElementById('taskTime').value = '';
-        
     } catch (e) {
         alert("Terjadi masalah saat menyimpan tugas: " + e.message);
     }
 }
 window.addTask = saveTask; 
 
+// --- PENGAMAN DATA ---
 function getSafeDate(timeStr) {
     if (!timeStr) return new Date('2099-01-01');
     let d = new Date(timeStr);
     return isNaN(d.getTime()) ? new Date('2099-01-01') : d;
 }
 
-// PERBAIKAN 1: Pengecekan Kategori SUPER AMAN menggunakan String()
 function renderTaskHTML(task) {
     let cat = categories.find(c => String(c.id) === String(task.categoryId));
     if (!cat) cat = categories[0] || {name: "General", color: "#888"};
@@ -158,7 +169,6 @@ function renderTaskHTML(task) {
         }
     }
     
-    // Perbaikan boolean agar coretan tugas (Selesai/Belum) konsisten
     let isDone = (task.isCompleted === true || task.isCompleted === "true");
 
     return `
@@ -217,24 +227,19 @@ function renderAllTasks() {
     list.innerHTML = '';
     
     if(tasks.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:#888;">No tasks yet.</p>';
+        list.innerHTML = '<p style="text-align:center; color:#888;">Belum ada tugas.</p>';
         return;
     }
 
-    let renderedAny = false;
-
     categories.forEach(cat => {
-        // PERBAIKAN 2: Gunakan String() untuk membandingkan ID, supaya angka/teks dari Google Sheets tetap cocok
         let catTasks = tasks.filter(t => String(t.categoryId) === String(cat.id));
         
-        // Proteksi: Jika ada tugas yang kategorinya dihapus/hilang, paksa masuk ke kotak kategori pertama
         if (String(cat.id) === String(categories[0].id)) {
             let orphanTasks = tasks.filter(t => !t.categoryId || !categories.find(c => String(c.id) === String(t.categoryId)));
             catTasks = catTasks.concat(orphanTasks);
         }
 
         if(catTasks.length === 0) return; 
-        renderedAny = true;
 
         let pending = catTasks.filter(t => t.isCompleted !== true && t.isCompleted !== "true").sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
         let completed = catTasks.filter(t => t.isCompleted === true || t.isCompleted === "true").sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
@@ -245,36 +250,31 @@ function renderAllTasks() {
                 
                 <div style="margin-bottom: 15px; margin-top: 15px;">
                     <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">⏳ PENDING</h4>
-                    ${pending.length > 0 ? pending.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">No pending tasks.</p>'}
+                    ${pending.length > 0 ? pending.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">Kosong</p>'}
                 </div>
 
                 <div style="margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 15px;">
                     <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">✅ COMPLETED</h4>
-                    ${completed.length > 0 ? completed.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">No completed tasks.</p>'}
+                    ${completed.length > 0 ? completed.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">Kosong</p>'}
                 </div>
             </div>
         `;
         list.innerHTML += catHTML;
     });
-
-    if(!renderedAny) {
-        list.innerHTML = '<p style="text-align:center; color:#888;">Gagal memuat struktur. Tugas Anda aman, tapi butuh perbaikan kategori.</p>';
-    }
 }
 
 function toggleComplete(id) {
     let task = tasks.find(t => String(t.id) === String(id));
     if(task) { 
-        // Pastikan format booleannya baku sebelum dikirim ke cloud
         task.isCompleted = (task.isCompleted === true || task.isCompleted === "true") ? false : true; 
         saveDataToCloud(); 
     }
 }
 function deleteTask(id) {
-    if(confirm('Delete this task?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
+    if(confirm('Hapus tugas ini?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
 }
 
-// --- KATEGORI & SETTINGS ---
+// --- KATEGORI ---
 function addCategory() {
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
@@ -283,31 +283,46 @@ function addCategory() {
     categories.push({ id: Date.now().toString(), name, color });
     document.getElementById('newCatName').value = '';
     renderCategories(); saveDataToCloud();
+    alert("Kategori berhasil dibuat!");
 }
+
 function renderCategories() {
+    // 1. Render Dropdown di Modal (Fokus utama agar tidak kosong)
     let select = document.getElementById('taskCategory');
     if(select) {
         select.innerHTML = '';
-        categories.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+        if (categories.length === 0) {
+            select.innerHTML = `<option value="">(Tidak ada kategori)</option>`;
+        } else {
+            categories.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+        }
     }
+    
+    // 2. Render List di Halaman Kategori
     let list = document.getElementById('catList');
     if(list) {
         list.innerHTML = '';
-        categories.forEach((c, index) => {
-            list.innerHTML += `
-                <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding: 10px;">
-                    <span class="badge" style="background: ${c.color}; font-size:13px;">${c.name}</span>
-                    <button class="btn-icon" onclick="deleteCategory(${index})">✕</button>
-                </div>
-            `;
-        });
+        if (categories.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:#888;">Belum ada kategori.</p>';
+        } else {
+            categories.forEach((c, index) => {
+                list.innerHTML += `
+                    <div class="task-card" style="flex-direction:row; justify-content:space-between; align-items:center; padding: 15px;">
+                        <span class="badge" style="background: ${c.color}; font-size:14px; padding: 6px 12px;">${c.name}</span>
+                        <button class="btn-icon" style="color: #ff4d4d; border-color: #ff4d4d;" onclick="deleteCategory(${index})">Hapus ✕</button>
+                    </div>
+                `;
+            });
+        }
     }
 }
+
 function deleteCategory(index) {
     if(categories.length <= 1) return alert('Minimal sisakan 1 kategori!');
     categories.splice(index, 1); renderCategories(); renderAllViews(); saveDataToCloud();
 }
 
+// --- TEMA ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); }
