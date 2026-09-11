@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orbit-cache-v4'; // Versi 4
+const CACHE_NAME = 'orbit-cache-v5'; // Versi 5
 const urlsToCache = ['./', './index.html', './app.js', './manifest.json'];
 
 self.addEventListener('install', event => {
