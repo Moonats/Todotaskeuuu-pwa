@@ -1,21 +1,21 @@
-let tasks = JSON.parse(localStorage.getItem('orbit_tasks_v4')) || [];
-let categories = JSON.parse(localStorage.getItem('orbit_cats_v4')) || [
+let tasks = JSON.parse(localStorage.getItem('orbit_tasks_v5')) || [];
+let categories = JSON.parse(localStorage.getItem('orbit_cats_v5')) || [
     { id: '1', name: 'General', color: '#808080' },
     { id: '2', name: 'Work', color: '#0074D9' }
 ];
 
-// Minimalist Icons Set
 const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
 let selectedIcon = '✦';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
+    checkNotifStatus();
     renderIcons();
     renderCategories();
     renderAllViews();
 });
 
-// --- Modal (Pop-up) Functions ---
+// --- Modal Functions ---
 function openModal(id) {
     document.getElementById(id).classList.add('active');
 }
@@ -35,7 +35,6 @@ function switchView(viewName) {
     renderAllViews();
 }
 
-// --- Icon Selection Logic ---
 function renderIcons() {
     let grid = document.getElementById('taskIconGrid');
     grid.innerHTML = '';
@@ -43,28 +42,30 @@ function renderIcons() {
         let div = document.createElement('div');
         div.className = `icon-option ${icon === selectedIcon ? 'selected' : ''}`;
         div.textContent = icon;
-        div.onclick = () => {
-            selectedIcon = icon;
-            renderIcons(); // Re-render to update selected class
-        };
+        div.onclick = () => { selectedIcon = icon; renderIcons(); };
         grid.appendChild(div);
     });
 }
 
-// --- Task Functions ---
+// --- Task Functions (Dengan Format Waktu Baru) ---
 function addTask() {
     let title = document.getElementById('taskInput').value.trim();
     let desc = document.getElementById('taskDesc').value.trim();
-    let time = document.getElementById('taskTime').value;
+    let date = document.getElementById('taskDate').value;
+    let timeStr = document.getElementById('taskTime').value; // Hanya Jam & Menit
     let catId = document.getElementById('taskCategory').value;
     
-    if (!title || !time) return alert('Task Title and Time are required!');
+    if (!title || !date || !timeStr) return alert('Task Title, Date, and Time are required!');
 
-    tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
-    localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
+    // Gabungkan tanggal dan waktu
+    let fullTime = `${date}T${timeStr}`;
+
+    tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time: fullTime, categoryId: catId, isCompleted: false });
+    localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
     
     document.getElementById('taskInput').value = '';
     document.getElementById('taskDesc').value = '';
+    document.getElementById('taskDate').value = '';
     document.getElementById('taskTime').value = '';
     
     closeModal('taskModal');
@@ -96,7 +97,6 @@ function renderTaskHTML(task) {
     `;
 }
 
-// --- Timeline Logic ---
 function renderHomeTimeline() {
     let todayBox = document.querySelector('#timelineToday .list');
     let tomorrowBox = document.querySelector('#timelineTomorrow .list');
@@ -130,14 +130,14 @@ function renderAllTasks() {
 function toggleComplete(id) {
     let task = tasks.find(t => t.id === id);
     if(task) task.isCompleted = !task.isCompleted;
-    localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
+    localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
     renderAllViews();
 }
 
 function deleteTask(id) {
     if(confirm('Are you sure you want to delete this task?')) {
         tasks = tasks.filter(t => t.id !== id);
-        localStorage.setItem('orbit_tasks_v4', JSON.stringify(tasks));
+        localStorage.setItem('orbit_tasks_v5', JSON.stringify(tasks));
         renderAllViews();
     }
 }
@@ -149,7 +149,7 @@ function addCategory() {
     if(!name) return alert('Category name cannot be empty!');
     
     categories.push({ id: Date.now().toString(), name, color });
-    localStorage.setItem('orbit_cats_v4', JSON.stringify(categories));
+    localStorage.setItem('orbit_cats_v5', JSON.stringify(categories));
     document.getElementById('newCatName').value = '';
     renderCategories();
 }
@@ -178,11 +178,11 @@ function renderCategories() {
 function deleteCategory(index) {
     if(categories.length <= 1) return alert('You must have at least 1 category!');
     categories.splice(index, 1);
-    localStorage.setItem('orbit_cats_v4', JSON.stringify(categories));
+    localStorage.setItem('orbit_cats_v5', JSON.stringify(categories));
     renderCategories(); renderAllViews();
 }
 
-// --- Dark Mode ---
+// --- Settings Logic ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) {
@@ -198,5 +198,33 @@ function loadTheme() {
     if(localStorage.getItem('theme') === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         document.getElementById('darkModeToggle').checked = true;
+    }
+}
+
+function requestNotifications() {
+    let isChecked = document.getElementById('notifToggle').checked;
+    if (isChecked) {
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission().then(permission => {
+                if (permission !== "granted") {
+                    alert("Notification permission denied by browser.");
+                    document.getElementById('notifToggle').checked = false;
+                }
+            });
+        }
+    }
+}
+
+function checkNotifStatus() {
+    if (Notification.permission === "granted") {
+        document.getElementById('notifToggle').checked = true;
+    }
+}
+
+function clearAllData() {
+    if(confirm("WARNING: This will permanently delete ALL tasks and custom categories. Are you absolutely sure?")) {
+        localStorage.clear();
+        alert("All data has been cleared. The app will now reload.");
+        window.location.reload();
     }
 }
