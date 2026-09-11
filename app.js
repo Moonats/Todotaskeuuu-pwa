@@ -1,13 +1,6 @@
 // GANTI DENGAN URL GOOGLE APPS SCRIPT-MU!
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
 
-// Matikan Service Worker lama agar cache hilang
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) registration.unregister();
-    });
-}
-
 let tasks = [];
 let categories = [
     { id: '1', name: 'General', color: '#808080' },
@@ -16,7 +9,7 @@ let categories = [
 
 const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
 let selectedIcon = '✦';
-let editingTaskId = null; // Menyimpan ID tugas yang sedang diedit
+let editingTaskId = null; 
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
@@ -27,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- CLOUD SYSTEM ---
 function fetchDataFromCloud() {
     let list = document.getElementById('allTaskList');
-    if(list) list.innerHTML = "<i>Memuat data dari awan...</i>";
+    if(list) list.innerHTML = "<p style='text-align:center;'><i>Memuat data dari awan...</i></p>";
     
     fetch(CLOUD_URL)
         .then(response => response.json())
@@ -44,6 +37,7 @@ function fetchDataFromCloud() {
 }
 
 function saveDataToCloud() {
+    if(!Array.isArray(tasks)) tasks = [];
     let payload = { tasks: tasks, categories: categories };
     renderAllViews();
     fetch(CLOUD_URL, {
@@ -79,7 +73,7 @@ function renderIcons() {
 }
 
 function openNewTaskModal() {
-    editingTaskId = null; // Reset ke mode tambah baru
+    editingTaskId = null; 
     document.getElementById('taskModalTitle').innerText = "New Task";
     document.getElementById('taskInput').value = '';
     document.getElementById('taskDesc').value = '';
@@ -92,7 +86,7 @@ function editTask(id) {
     let task = tasks.find(t => t.id === id);
     if(!task) return;
     
-    editingTaskId = id; // Set ke mode edit
+    editingTaskId = id; 
     document.getElementById('taskModalTitle').innerText = "Edit Task";
     document.getElementById('taskInput').value = task.title;
     document.getElementById('taskDesc').value = task.desc || '';
@@ -107,31 +101,54 @@ function editTask(id) {
     openModal('taskModal');
 }
 
-function saveTask() { // Menggantikan addTask
-    let title = document.getElementById('taskInput').value.trim();
-    let desc = document.getElementById('taskDesc').value.trim();
-    let time = document.getElementById('taskTime').value;
-    let catId = document.getElementById('taskCategory').value;
-    
-    if (!title) return alert('Task Title is required!'); // Waktu kini opsional
+// Ini adalah fungsi utama penyimpanan (sudah dilapisi pelindung error)
+function saveTask() {
+    try {
+        let titleInput = document.getElementById('taskInput');
+        if(!titleInput) return alert("Sistem belum siap, silakan muat ulang halaman (refresh).");
+        
+        let title = titleInput.value.trim();
+        let desc = document.getElementById('taskDesc').value.trim();
+        let time = document.getElementById('taskTime').value;
+        let catSelect = document.getElementById('taskCategory');
+        let catId = catSelect ? catSelect.value : (categories[0] ? categories[0].id : '1');
+        
+        if (!title) return alert('Task Title is required!'); 
 
-    if (editingTaskId) {
-        // Mode Edit
-        let task = tasks.find(t => t.id === editingTaskId);
-        if(task) {
-            task.title = title; task.desc = desc; task.time = time;
-            task.categoryId = catId; task.icon = selectedIcon;
+        if(!Array.isArray(tasks)) tasks = [];
+
+        if (editingTaskId) {
+            let task = tasks.find(t => t.id === editingTaskId);
+            if(task) {
+                task.title = title; task.desc = desc; task.time = time;
+                task.categoryId = catId; task.icon = selectedIcon;
+            }
+        } else {
+            tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
         }
-    } else {
-        // Mode Tambah Baru
-        tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
+        
+        closeModal('taskModal');
+        saveDataToCloud();
+        
+        // Kosongkan form untuk penggunaan berikutnya
+        titleInput.value = '';
+        document.getElementById('taskDesc').value = '';
+        document.getElementById('taskTime').value = '';
+        
+    } catch (e) {
+        alert("Terjadi masalah saat menyimpan tugas: " + e.message);
     }
-    
-    closeModal('taskModal');
-    saveDataToCloud();
+}
+// Jaga-jaga jika kode HTML lama masih nyangkut
+window.addTask = saveTask; 
+
+// PENGAMAN TANGGAL (Agar tidak Invalid Date)
+function getSafeDate(timeStr) {
+    if (!timeStr) return new Date('2099-01-01');
+    let d = new Date(timeStr);
+    return isNaN(d.getTime()) ? new Date('2099-01-01') : d;
 }
 
-// Menghindari error Invalid Date di layar
 function renderTaskHTML(task) {
     let cat = categories.find(c => c.id === task.categoryId) || categories[0] || {name: "General", color: "#888"};
     
@@ -173,13 +190,14 @@ function renderHomeTimeline() {
     let today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     let tomorrow = today + 86400000; 
     
-    // Sortir tugas yg belum selesai & pastikan ditangani walau tanpa tanggal
     let activeTasks = tasks.filter(t => !t.isCompleted);
-    activeTasks.sort((a,b) => new Date(a.time || '2099-01-01') - new Date(b.time || '2099-01-01')).forEach(task => {
+    
+    // Sortir super aman
+    activeTasks.sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time)).forEach(task => {
         let html = renderTaskHTML(task);
         
         if (!task.time || isNaN(new Date(task.time).getTime())) {
-            nextWeekBox.innerHTML += html; // Masuk ke Nanti jika tanpa waktu
+            nextWeekBox.innerHTML += html; 
             return;
         }
         
@@ -192,7 +210,7 @@ function renderHomeTimeline() {
     });
 }
 
-// --- ALL TASKS (DIKELOMPOKKAN BY CATEGORY & STATUS) ---
+// --- ALL TASKS ---
 function renderAllTasks() {
     let list = document.getElementById('allTaskList');
     if(!list) return;
@@ -203,18 +221,16 @@ function renderAllTasks() {
         return;
     }
 
-    // Pastikan tugas yatim (kategorinya terhapus) masuk ke kategori pertama
     tasks.forEach(t => {
         if (!categories.find(c => c.id === t.categoryId)) t.categoryId = categories[0] ? categories[0].id : '';
     });
 
     categories.forEach(cat => {
         let catTasks = tasks.filter(t => t.categoryId === cat.id);
-        if(catTasks.length === 0) return; // Lewati kategori yg kosong
+        if(catTasks.length === 0) return; 
 
-        // Pisahkan selesai & belum
-        let pending = catTasks.filter(t => !t.isCompleted).sort((a,b) => new Date(a.time||'2099') - new Date(b.time||'2099'));
-        let completed = catTasks.filter(t => t.isCompleted).sort((a,b) => new Date(a.time||'2099') - new Date(b.time||'2099'));
+        let pending = catTasks.filter(t => !t.isCompleted).sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
+        let completed = catTasks.filter(t => t.isCompleted).sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
 
         let catHTML = `
             <div style="margin-bottom: 25px; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
