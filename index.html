@@ -4,37 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Orbit</title>
-    <link rel="manifest" href="manifest.json">
     <style>
-        :root {
-            --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #0074D9; --danger: #ff4d4d;
-        }
-        [data-theme="dark"] {
-            --bg: #000000; --text: #e0e0e0; --card: #001f3f; --border: #003366; --primary: #0074D9; --danger: #ff6666;
-        }
-        
+        :root { --bg: #f4f4f9; --text: #333; --card: #fff; --border: #ddd; --primary: #0074D9; }
+        [data-theme="dark"] { --bg: #000000; --text: #e0e0e0; --card: #001f3f; --border: #003366; --primary: #0074D9; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background: var(--bg); color: var(--text); padding-top: 60px; padding-bottom: 80px; transition: 0.3s; }
         
-        /* Header */
         header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
         .btn-settings { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text); }
 
-        /* Bottom Navigation */
         nav { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
         .nav-item { background: none; border: none; font-size: 14px; color: var(--text); display: flex; flex-direction: column; align-items: center; cursor: pointer; opacity: 0.5; width: 30%; height: 100%; justify-content: center; gap: 4px; }
         .nav-item.active { opacity: 1; color: var(--primary); font-weight: bold; }
         .nav-icon { font-size: 20px; }
-        
-        /* Floating Add Button in Nav (Z-index dinaikkan agar pasti bisa diklik) */
-        .btn-add-float { width: 55px; height: 55px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,116,217,0.4); transform: translateY(-15px); z-index: 20; position: relative; }
+        .btn-add-float { width: 50px; height: 50px; background: var(--primary); color: white; border: none; border-radius: 50%; font-size: 28px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,116,217,0.4); transform: translateY(-10px); }
 
-        /* Main Content */
         .container { padding: 15px; max-width: 600px; margin: auto; display: none; }
         .container.active { display: block; }
-        h3 { margin: 15px 0 10px 0; font-size: 13px; opacity: 0.7; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        h3 { margin: 15px 0 10px 0; font-size: 14px; opacity: 0.7; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Modals */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: flex-end; z-index: 100; backdrop-filter: blur(2px); }
         .modal-overlay.active { display: flex; }
         .modal-content { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px 16px 0 0; padding: 20px; animation: slideUp 0.3s ease; max-height: 90vh; overflow-y: auto; }
@@ -42,21 +30,16 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .close-btn { background: var(--border); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--text); font-weight: bold; }
 
-        /* Forms */
         input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; font-size: 14px; }
         textarea { resize: vertical; min-height: 80px; }
         .btn-main { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
         .btn-outline { width: 100%; padding: 12px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
 
-        /* Icon Grid */
         .icon-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
         .icon-option { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 18px; cursor: pointer; }
         .icon-option.selected { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* Toggle Switch & Settings Card */
-        .setting-card { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; }
-        .setting-info { display: flex; align-items: center; gap: 15px; font-size: 16px; font-weight: bold; }
-        
+        .toggle-wrap { display: flex; align-items: center; gap: 15px; background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
@@ -64,7 +47,6 @@
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(24px); }
 
-        /* Task Cards */
         .task-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
         .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .task-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 10px; }
@@ -72,7 +54,7 @@
         .task-desc { font-size: 13px; color: #888; }
         .badge { font-size: 11px; padding: 4px 8px; border-radius: 12px; color: white; display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .task-time { font-size: 12px; font-weight: bold; color: var(--primary); margin-top: 5px; }
-        .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px; }
+        .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 5px; flex-wrap: wrap;}
         .btn-icon { background: var(--bg); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px; }
     </style>
 </head>
@@ -83,101 +65,66 @@
         <button class="btn-settings" onclick="switchView('settings')">⚙️</button>
     </header>
 
-    <!-- HOME VIEW -->
     <main id="view-home" class="container active">
         <div id="timelineToday"><h3>Today</h3><div class="list"></div></div>
         <div id="timelineTomorrow"><h3>Tomorrow</h3><div class="list"></div></div>
         <div id="timelineNextWeek"><h3>Next Week & Later</h3><div class="list"></div></div>
     </main>
 
-    <!-- ALL TASKS VIEW -->
     <main id="view-all" class="container">
-        <h3>All Tasks</h3>
+        <h3>All Tasks by Category</h3>
         <div id="allTaskList"></div>
     </main>
 
-    <!-- SETTINGS VIEW (Diperbarui menyerupai aplikasi asli) -->
     <main id="view-settings" class="container">
-        <h3>Account & Data</h3>
-        <div class="setting-card">
-            <div class="setting-info"><span>👤</span> Storage Mode</div>
-            <span style="font-size: 13px; color: #888;">Local Offline</span>
-        </div>
-
         <h3>Appearance</h3>
-        <div class="setting-card">
-            <div class="setting-info"><span>🌙</span> Dark Mode</div>
+        <div class="toggle-wrap">
+            <span style="font-size: 20px;">🌙</span>
             <label class="switch">
                 <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
                 <span class="slider"></span>
             </label>
-        </div>
-
-        <h3>Notifications</h3>
-        <div class="setting-card">
-            <div class="setting-info"><span>🔔</span> Task Reminders</div>
-            <label class="switch">
-                <input type="checkbox" id="notifToggle" onchange="requestNotifications()">
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <h3>Advanced</h3>
-        <button class="btn-outline" style="color: var(--danger); border-color: var(--danger); text-align: left;" onclick="clearAllData()">
-            🗑️ Clear All App Data (Reset)
-        </button>
-
-        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #888;">
-            Orbit Task Manager<br>Version 5.0.0
+            <span style="font-size: 14px; font-weight: bold;">Dark Mode</span>
         </div>
     </main>
 
-    <!-- BOTTOM NAVIGATION -->
     <nav>
-        <button id="nav-home" class="nav-item active" onclick="switchView('home')">
-            <span class="nav-icon">🏠</span> Home
-        </button>
-        <button class="btn-add-float" onclick="openModal('taskModal')">+</button>
-        <button id="nav-all" class="nav-item" onclick="switchView('all')">
-            <span class="nav-icon">📋</span> All Tasks
-        </button>
+        <button id="nav-home" class="nav-item active" onclick="switchView('home')"><span class="nav-icon">🏠</span> Home</button>
+        <button class="btn-add-float" onclick="openNewTaskModal()">+</button>
+        <button id="nav-all" class="nav-item" onclick="switchView('all')"><span class="nav-icon">📋</span> All Tasks</button>
     </nav>
 
-    <!-- ADD TASK MODAL -->
+    <!-- TASK MODAL -->
     <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>New Task</h2>
+                <h2 id="taskModalTitle">New Task</h2>
                 <button class="close-btn" onclick="closeModal('taskModal')">✕</button>
             </div>
             
-            <label style="font-size: 14px; color: #888; margin-bottom: 5px; display: block;">Select Icon:</label>
+            <label>Select Icon:</label>
             <div class="icon-grid" id="taskIconGrid"></div>
             
             <input type="text" id="taskInput" placeholder="Task Title...">
             <textarea id="taskDesc" placeholder="Additional Notes..."></textarea>
             
-            <!-- Perubahan Waktu: Dipisah menjadi Tanggal dan Jam (Tanpa detik) -->
             <div style="display: flex; gap: 10px;">
-                <input type="date" id="taskDate" style="flex: 1;" title="Task Date">
-                <input type="time" id="taskTime" style="flex: 1;" title="Task Time">
+                <input type="datetime-local" id="taskTime" style="flex: 1;">
+                <select id="taskCategory" style="flex: 1;"></select>
             </div>
             
-            <select id="taskCategory"></select>
-            
             <button class="btn-outline" onclick="openModal('categoryModal')">✦ Manage Categories</button>
-            <button class="btn-main" onclick="addTask()">Save Task</button>
+            <button class="btn-main" onclick="saveTask()">Save Task</button>
         </div>
     </div>
 
-    <!-- MANAGE CATEGORY MODAL -->
+    <!-- CATEGORY MODAL -->
     <div id="categoryModal" class="modal-overlay" style="z-index: 101;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Categories</h2>
                 <button class="close-btn" onclick="closeModal('categoryModal')">✕</button>
             </div>
-            
             <div style="background: var(--bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <input type="text" id="newCatName" placeholder="New Category Name...">
                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
@@ -186,7 +133,6 @@
                 </div>
                 <button class="btn-main" onclick="addCategory()">Add Category</button>
             </div>
-
             <div id="catList" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
