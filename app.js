@@ -2,7 +2,11 @@
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
 
 let tasks = [];
-let categories = []; 
+// PERBAIKAN: Kategori default diisi dari awal agar tidak kosong saat internet lambat
+let categories = [
+    { id: '1', name: 'General', color: '#808080' },
+    { id: '2', name: 'Work', color: '#0074D9' }
+]; 
 
 const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
 let selectedIcon = '✦';
@@ -23,21 +27,14 @@ function fetchDataFromCloud() {
         .then(response => response.json())
         .then(data => {
             if (data && Array.isArray(data.tasks)) tasks = data.tasks;
-            
             if (data && Array.isArray(data.categories) && data.categories.length > 0) {
                 categories = data.categories;
-            } else {
-                categories = [
-                    { id: '1', name: 'General', color: '#808080' },
-                    { id: '2', name: 'Work', color: '#0074D9' }
-                ];
             }
             renderCategories();
             renderAllViews();
         })
         .catch(err => {
             console.log("Memuat lokal", err);
-            if(categories.length === 0) categories = [{ id: '1', name: 'General', color: '#808080' }];
             renderCategories(); renderAllViews();
         });
 }
@@ -273,7 +270,7 @@ function deleteTask(id) {
     if(confirm('Hapus tugas ini?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
 }
 
-// --- KATEGORI (DIPERBAIKI KHUSUS UNTUK HP ANDROID) ---
+// --- KATEGORI ---
 function addCategory() {
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
@@ -286,10 +283,8 @@ function addCategory() {
 }
 
 function renderCategories() {
-    // 1. Render Dropdown menggunakan metode DOM baku agar terbaca di semua HP
     let select = document.getElementById('taskCategory');
     if(select) {
-        // Hapus isi dropdown yang lama dengan aman
         while (select.firstChild) {
             select.removeChild(select.firstChild);
         }
@@ -309,7 +304,6 @@ function renderCategories() {
         }
     }
     
-    // 2. Render List di Halaman Kategori
     let list = document.getElementById('catList');
     if(list) {
         list.innerHTML = '';
