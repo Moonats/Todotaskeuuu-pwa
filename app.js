@@ -83,7 +83,7 @@ function openNewTaskModal() {
 }
 
 function editTask(id) {
-    let task = tasks.find(t => t.id === id);
+    let task = tasks.find(t => String(t.id) === String(id));
     if(!task) return;
     
     editingTaskId = id; 
@@ -101,11 +101,10 @@ function editTask(id) {
     openModal('taskModal');
 }
 
-// Ini adalah fungsi utama penyimpanan (sudah dilapisi pelindung error)
 function saveTask() {
     try {
         let titleInput = document.getElementById('taskInput');
-        if(!titleInput) return alert("Sistem belum siap, silakan muat ulang halaman (refresh).");
+        if(!titleInput) return alert("Sistem belum siap, silakan refresh.");
         
         let title = titleInput.value.trim();
         let desc = document.getElementById('taskDesc').value.trim();
@@ -113,12 +112,12 @@ function saveTask() {
         let catSelect = document.getElementById('taskCategory');
         let catId = catSelect ? catSelect.value : (categories[0] ? categories[0].id : '1');
         
-        if (!title) return alert('Task Title is required!'); 
+        if (!title) return alert('Judul tugas wajib diisi!'); 
 
         if(!Array.isArray(tasks)) tasks = [];
 
         if (editingTaskId) {
-            let task = tasks.find(t => t.id === editingTaskId);
+            let task = tasks.find(t => String(t.id) === String(editingTaskId));
             if(task) {
                 task.title = title; task.desc = desc; task.time = time;
                 task.categoryId = catId; task.icon = selectedIcon;
@@ -130,7 +129,6 @@ function saveTask() {
         closeModal('taskModal');
         saveDataToCloud();
         
-        // Kosongkan form untuk penggunaan berikutnya
         titleInput.value = '';
         document.getElementById('taskDesc').value = '';
         document.getElementById('taskTime').value = '';
@@ -139,18 +137,18 @@ function saveTask() {
         alert("Terjadi masalah saat menyimpan tugas: " + e.message);
     }
 }
-// Jaga-jaga jika kode HTML lama masih nyangkut
 window.addTask = saveTask; 
 
-// PENGAMAN TANGGAL (Agar tidak Invalid Date)
 function getSafeDate(timeStr) {
     if (!timeStr) return new Date('2099-01-01');
     let d = new Date(timeStr);
     return isNaN(d.getTime()) ? new Date('2099-01-01') : d;
 }
 
+// PERBAIKAN 1: Pengecekan Kategori SUPER AMAN menggunakan String()
 function renderTaskHTML(task) {
-    let cat = categories.find(c => c.id === task.categoryId) || categories[0] || {name: "General", color: "#888"};
+    let cat = categories.find(c => String(c.id) === String(task.categoryId));
+    if (!cat) cat = categories[0] || {name: "General", color: "#888"};
     
     let timeText = "No Date";
     if (task.time) {
@@ -160,8 +158,11 @@ function renderTaskHTML(task) {
         }
     }
     
+    // Perbaikan boolean agar coretan tugas (Selesai/Belum) konsisten
+    let isDone = (task.isCompleted === true || task.isCompleted === "true");
+
     return `
-        <div class="task-card ${task.isCompleted ? 'completed' : ''}">
+        <div class="task-card ${isDone ? 'completed' : ''}">
             <div class="task-header">
                 <div class="task-title"><span>${task.icon}</span> ${task.title}</div>
                 <span class="badge" style="background: ${cat.color}">${cat.name}</span>
@@ -169,7 +170,7 @@ function renderTaskHTML(task) {
             ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
             <div class="task-time">${timeText}</div>
             <div class="actions">
-                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${task.isCompleted ? 'Undo' : 'Done ✓'}</button>
+                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${isDone ? 'Undo' : 'Done ✓'}</button>
                 <button class="btn-icon" onclick="editTask('${task.id}')">Edit ✏️</button>
                 <button class="btn-icon" onclick="deleteTask('${task.id}')">Delete ✕</button>
             </div>
@@ -190,9 +191,8 @@ function renderHomeTimeline() {
     let today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     let tomorrow = today + 86400000; 
     
-    let activeTasks = tasks.filter(t => !t.isCompleted);
+    let activeTasks = tasks.filter(t => t.isCompleted !== true && t.isCompleted !== "true");
     
-    // Sortir super aman
     activeTasks.sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time)).forEach(task => {
         let html = renderTaskHTML(task);
         
@@ -221,16 +221,23 @@ function renderAllTasks() {
         return;
     }
 
-    tasks.forEach(t => {
-        if (!categories.find(c => c.id === t.categoryId)) t.categoryId = categories[0] ? categories[0].id : '';
-    });
+    let renderedAny = false;
 
     categories.forEach(cat => {
-        let catTasks = tasks.filter(t => t.categoryId === cat.id);
-        if(catTasks.length === 0) return; 
+        // PERBAIKAN 2: Gunakan String() untuk membandingkan ID, supaya angka/teks dari Google Sheets tetap cocok
+        let catTasks = tasks.filter(t => String(t.categoryId) === String(cat.id));
+        
+        // Proteksi: Jika ada tugas yang kategorinya dihapus/hilang, paksa masuk ke kotak kategori pertama
+        if (String(cat.id) === String(categories[0].id)) {
+            let orphanTasks = tasks.filter(t => !t.categoryId || !categories.find(c => String(c.id) === String(t.categoryId)));
+            catTasks = catTasks.concat(orphanTasks);
+        }
 
-        let pending = catTasks.filter(t => !t.isCompleted).sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
-        let completed = catTasks.filter(t => t.isCompleted).sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
+        if(catTasks.length === 0) return; 
+        renderedAny = true;
+
+        let pending = catTasks.filter(t => t.isCompleted !== true && t.isCompleted !== "true").sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
+        let completed = catTasks.filter(t => t.isCompleted === true || t.isCompleted === "true").sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
 
         let catHTML = `
             <div style="margin-bottom: 25px; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
@@ -249,14 +256,22 @@ function renderAllTasks() {
         `;
         list.innerHTML += catHTML;
     });
+
+    if(!renderedAny) {
+        list.innerHTML = '<p style="text-align:center; color:#888;">Gagal memuat struktur. Tugas Anda aman, tapi butuh perbaikan kategori.</p>';
+    }
 }
 
 function toggleComplete(id) {
-    let task = tasks.find(t => t.id === id);
-    if(task) { task.isCompleted = !task.isCompleted; saveDataToCloud(); }
+    let task = tasks.find(t => String(t.id) === String(id));
+    if(task) { 
+        // Pastikan format booleannya baku sebelum dikirim ke cloud
+        task.isCompleted = (task.isCompleted === true || task.isCompleted === "true") ? false : true; 
+        saveDataToCloud(); 
+    }
 }
 function deleteTask(id) {
-    if(confirm('Delete this task?')) { tasks = tasks.filter(t => t.id !== id); saveDataToCloud(); }
+    if(confirm('Delete this task?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
 }
 
 // --- KATEGORI & SETTINGS ---
