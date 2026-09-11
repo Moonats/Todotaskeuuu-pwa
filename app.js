@@ -1,5 +1,5 @@
 // GANTI DENGAN URL GOOGLE APPS SCRIPT-MU!
-const CLOUD_URL = const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
 
 let tasks = [];
 let categories = []; 
@@ -24,7 +24,6 @@ function fetchDataFromCloud() {
         .then(data => {
             if (data && Array.isArray(data.tasks)) tasks = data.tasks;
             
-            // Jaminan Kategori Tidak Kosong
             if (data && Array.isArray(data.categories) && data.categories.length > 0) {
                 categories = data.categories;
             } else {
@@ -92,7 +91,7 @@ function openNewTaskModal() {
     selectedIcon = '✦'; 
     
     renderIcons();
-    renderCategories(); // MEMAKSA DROPDOWN TERISI SETIAP KALI TOMBOL (+) DITEKAN
+    renderCategories(); 
     
     openModal('taskModal');
 }
@@ -109,7 +108,7 @@ function editTask(id) {
     selectedIcon = task.icon || '✦';
     
     renderIcons();
-    renderCategories(); // MEMAKSA DROPDOWN TERISI
+    renderCategories(); 
     
     let catSelect = document.getElementById('taskCategory');
     if(catSelect) catSelect.value = task.categoryId;
@@ -274,7 +273,7 @@ function deleteTask(id) {
     if(confirm('Hapus tugas ini?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
 }
 
-// --- KATEGORI ---
+// --- KATEGORI (DIPERBAIKI KHUSUS UNTUK HP ANDROID) ---
 function addCategory() {
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
@@ -287,14 +286,26 @@ function addCategory() {
 }
 
 function renderCategories() {
-    // 1. Render Dropdown di Modal (Fokus utama agar tidak kosong)
+    // 1. Render Dropdown menggunakan metode DOM baku agar terbaca di semua HP
     let select = document.getElementById('taskCategory');
     if(select) {
-        select.innerHTML = '';
+        // Hapus isi dropdown yang lama dengan aman
+        while (select.firstChild) {
+            select.removeChild(select.firstChild);
+        }
+        
         if (categories.length === 0) {
-            select.innerHTML = `<option value="">(Tidak ada kategori)</option>`;
+            let opt = document.createElement('option');
+            opt.value = "";
+            opt.textContent = "(Tidak ada kategori)";
+            select.appendChild(opt);
         } else {
-            categories.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+            categories.forEach(c => { 
+                let opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
         }
     }
     
