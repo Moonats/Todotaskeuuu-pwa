@@ -2,10 +2,9 @@
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycby5dCP-c1mW-9KcPE1wHcYFfr4NupNy_awoyZYfs2U637olK_jKGwDdKyB0hQANQ-Bu/exec";
 
 let tasks = [];
-// PERBAIKAN: Kategori default diisi dari awal agar tidak kosong saat internet lambat
 let categories = [
-    { id: '1', name: 'General', color: '#808080' },
-    { id: '2', name: 'Work', color: '#0074D9' }
+    { id: '1', name: 'Umum', color: '#808080' },
+    { id: '2', name: 'Kerja', color: '#0074D9' }
 ]; 
 
 const icons = ['✦', '⚡', '☕', '💼', '🛒', '💡', '📌', '🗓️', '⚐', '✎', '★', '✈'];
@@ -18,24 +17,26 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchDataFromCloud();
 });
 
-// --- CLOUD SYSTEM ---
+// --- CLOUD SYSTEM DENGAN PENGAMAN ANTI-STUCK ---
 function fetchDataFromCloud() {
-    let list = document.getElementById('allTaskList');
-    if(list) list.innerHTML = "<p style='text-align:center;'><i>Memuat data dari awan...</i></p>";
-    
     fetch(CLOUD_URL)
         .then(response => response.json())
         .then(data => {
             if (data && Array.isArray(data.tasks)) tasks = data.tasks;
             if (data && Array.isArray(data.categories) && data.categories.length > 0) {
-                categories = data.categories;
+                // Pastikan kategori "Semua" atau yang tidak valid tidak ikut tersimpan
+                categories = data.categories.filter(c => c.name && c.name.toLowerCase() !== 'semua');
+            }
+            if(categories.length === 0) {
+                categories = [{ id: '1', name: 'Umum', color: '#808080' }];
             }
             renderCategories();
             renderAllViews();
         })
         .catch(err => {
-            console.log("Memuat lokal", err);
-            renderCategories(); renderAllViews();
+            console.log("Gagal koneksi awan, pakai mode lokal:", err);
+            renderCategories(); 
+            renderAllViews();
         });
 }
 
@@ -47,7 +48,7 @@ function saveDataToCloud() {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
         body: JSON.stringify(payload)
-    }).catch(err => console.log("Gagal simpan cloud", err));
+    }).catch(err => console.log("Gagal simpan cloud:", err));
 }
 
 // --- NAV & MODALS ---
@@ -56,7 +57,8 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 function switchView(viewName) {
     document.querySelectorAll('.container').forEach(el => el.classList.remove('active'));
-    document.getElementById(`view-${viewName}`).classList.add('active');
+    let target = document.getElementById(`view-${viewName}`);
+    if(target) target.classList.add('active');
     
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     let activeNav = document.getElementById(`nav-${viewName}`);
@@ -65,7 +67,7 @@ function switchView(viewName) {
     renderAllViews();
 }
 
-// --- FUNGSI TUGAS ---
+// --- TUGAS ---
 function renderIcons() {
     let grid = document.getElementById('taskIconGrid');
     if(!grid) return;
@@ -81,15 +83,21 @@ function renderIcons() {
 
 function openNewTaskModal() {
     editingTaskId = null; 
-    document.getElementById('taskModalTitle').innerText = "New Task";
-    document.getElementById('taskInput').value = '';
-    document.getElementById('taskDesc').value = '';
-    document.getElementById('taskTime').value = '';
-    selectedIcon = '✦'; 
+    let titleEl = document.getElementById('taskModalTitle');
+    if(titleEl) titleEl.innerText = "Tugas Baru";
     
+    let inputEl = document.getElementById('taskInput');
+    if(inputEl) inputEl.value = '';
+    
+    let descEl = document.getElementById('taskDesc');
+    if(descEl) descEl.value = '';
+    
+    let timeEl = document.getElementById('taskTime');
+    if(timeEl) timeEl.value = '';
+    
+    selectedIcon = '✦'; 
     renderIcons();
     renderCategories(); 
-    
     openModal('taskModal');
 }
 
@@ -98,7 +106,7 @@ function editTask(id) {
     if(!task) return;
     
     editingTaskId = id; 
-    document.getElementById('taskModalTitle').innerText = "Edit Task";
+    document.getElementById('taskModalTitle').innerText = "Edit Tugas";
     document.getElementById('taskInput').value = task.title;
     document.getElementById('taskDesc').value = task.desc || '';
     document.getElementById('taskTime').value = task.time || '';
@@ -114,39 +122,34 @@ function editTask(id) {
 }
 
 function saveTask() {
-    try {
-        let titleInput = document.getElementById('taskInput');
-        if(!titleInput) return alert("Sistem belum siap, silakan refresh.");
-        
-        let title = titleInput.value.trim();
-        let desc = document.getElementById('taskDesc').value.trim();
-        let time = document.getElementById('taskTime').value;
-        let catSelect = document.getElementById('taskCategory');
-        let catId = catSelect ? catSelect.value : categories[0].id;
-        
-        if (!title) return alert('Judul tugas wajib diisi!'); 
+    let titleInput = document.getElementById('taskInput');
+    if(!titleInput) return;
+    
+    let title = titleInput.value.trim();
+    let desc = document.getElementById('taskDesc').value.trim();
+    let time = document.getElementById('taskTime').value;
+    let catSelect = document.getElementById('taskCategory');
+    let catId = catSelect ? catSelect.value : categories[0].id;
+    
+    if (!title) return alert('Judul tugas wajib diisi!'); 
 
-        if(!Array.isArray(tasks)) tasks = [];
+    if(!Array.isArray(tasks)) tasks = [];
 
-        if (editingTaskId) {
-            let task = tasks.find(t => String(t.id) === String(editingTaskId));
-            if(task) {
-                task.title = title; task.desc = desc; task.time = time;
-                task.categoryId = catId; task.icon = selectedIcon;
-            }
-        } else {
-            tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
+    if (editingTaskId) {
+        let task = tasks.find(t => String(t.id) === String(editingTaskId));
+        if(task) {
+            task.title = title; task.desc = desc; task.time = time;
+            task.categoryId = catId; task.icon = selectedIcon;
         }
-        
-        closeModal('taskModal');
-        saveDataToCloud();
-    } catch (e) {
-        alert("Terjadi masalah saat menyimpan tugas: " + e.message);
+    } else {
+        tasks.push({ id: Date.now().toString(), title, desc, icon: selectedIcon, time, categoryId: catId, isCompleted: false });
     }
+    
+    closeModal('taskModal');
+    saveDataToCloud();
 }
 window.addTask = saveTask; 
 
-// --- PENGAMAN DATA ---
 function getSafeDate(timeStr) {
     if (!timeStr) return new Date('2099-01-01');
     let d = new Date(timeStr);
@@ -155,13 +158,13 @@ function getSafeDate(timeStr) {
 
 function renderTaskHTML(task) {
     let cat = categories.find(c => String(c.id) === String(task.categoryId));
-    if (!cat) cat = categories[0] || {name: "General", color: "#888"};
+    if (!cat) cat = categories[0] || {name: "Umum", color: "#888"};
     
-    let timeText = "No Date";
+    let timeText = "Tanpa Waktu";
     if (task.time) {
         let d = new Date(task.time);
         if (!isNaN(d.getTime())) {
-            timeText = d.toLocaleString('en-US', {day: 'numeric', month:'short', hour: '2-digit', minute:'2-digit'});
+            timeText = d.toLocaleString('id-ID', {day: 'numeric', month:'short', hour: '2-digit', minute:'2-digit'});
         }
     }
     
@@ -176,15 +179,14 @@ function renderTaskHTML(task) {
             ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
             <div class="task-time">${timeText}</div>
             <div class="actions">
-                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${isDone ? 'Undo' : 'Done ✓'}</button>
+                <button class="btn-icon" onclick="toggleComplete('${task.id}')">${isDone ? 'Batal' : 'Selesai ✓'}</button>
                 <button class="btn-icon" onclick="editTask('${task.id}')">Edit ✏️</button>
-                <button class="btn-icon" onclick="deleteTask('${task.id}')">Delete ✕</button>
+                <button class="btn-icon" onclick="deleteTask('${task.id}')">Hapus ✕</button>
             </div>
         </div>
     `;
 }
 
-// --- HOME TIMELINE ---
 function renderHomeTimeline() {
     let todayBox = document.querySelector('#timelineToday .list');
     let tomorrowBox = document.querySelector('#timelineTomorrow .list');
@@ -201,12 +203,10 @@ function renderHomeTimeline() {
     
     activeTasks.sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time)).forEach(task => {
         let html = renderTaskHTML(task);
-        
         if (!task.time || isNaN(new Date(task.time).getTime())) {
             nextWeekBox.innerHTML += html; 
             return;
         }
-        
         let tDate = new Date(task.time);
         let tTime = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate()).getTime();
         
@@ -216,7 +216,6 @@ function renderHomeTimeline() {
     });
 }
 
-// --- ALL TASKS ---
 function renderAllTasks() {
     let list = document.getElementById('allTaskList');
     if(!list) return;
@@ -229,12 +228,10 @@ function renderAllTasks() {
 
     categories.forEach(cat => {
         let catTasks = tasks.filter(t => String(t.categoryId) === String(cat.id));
-        
         if (String(cat.id) === String(categories[0].id)) {
             let orphanTasks = tasks.filter(t => !t.categoryId || !categories.find(c => String(c.id) === String(t.categoryId)));
             catTasks = catTasks.concat(orphanTasks);
         }
-
         if(catTasks.length === 0) return; 
 
         let pending = catTasks.filter(t => t.isCompleted !== true && t.isCompleted !== "true").sort((a,b) => getSafeDate(a.time) - getSafeDate(b.time));
@@ -243,14 +240,12 @@ function renderAllTasks() {
         let catHTML = `
             <div style="margin-bottom: 25px; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
                 <h3 style="color: ${cat.color}; border-bottom: 2px solid ${cat.color}; margin-top: 0; padding-bottom: 8px;">${cat.name}</h3>
-                
                 <div style="margin-bottom: 15px; margin-top: 15px;">
-                    <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">⏳ PENDING</h4>
+                    <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">⏳ BELUM SELESAI</h4>
                     ${pending.length > 0 ? pending.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">Kosong</p>'}
                 </div>
-
                 <div style="margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 15px;">
-                    <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">✅ COMPLETED</h4>
+                    <h4 style="font-size: 13px; opacity: 0.7; margin-bottom: 10px;">✅ SUDAH SELESAI</h4>
                     ${completed.length > 0 ? completed.map(t => renderTaskHTML(t)).join('') : '<p style="font-size:13px; color:#888; font-style:italic;">Kosong</p>'}
                 </div>
             </div>
@@ -270,36 +265,25 @@ function deleteTask(id) {
     if(confirm('Hapus tugas ini?')) { tasks = tasks.filter(t => String(t.id) !== String(id)); saveDataToCloud(); }
 }
 
-// --- KATEGORI ---
 function addCategory() {
     let name = document.getElementById('newCatName').value.trim();
     let color = document.getElementById('newCatColor').value;
-    if(!name) return alert('Nama kategori wajib diisi!');
+    if(!name) return alert('Nama wajib diisi!');
     
     categories.push({ id: Date.now().toString(), name, color });
     document.getElementById('newCatName').value = '';
     renderCategories(); saveDataToCloud();
-    alert("Kategori berhasil dibuat!");
 }
 
 function renderCategories() {
     let select = document.getElementById('taskCategory');
     if(select) {
-        while (select.firstChild) {
-            select.removeChild(select.firstChild);
-        }
-        
+        select.options.length = 0; 
         if (categories.length === 0) {
-            let opt = document.createElement('option');
-            opt.value = "";
-            opt.textContent = "(Tidak ada kategori)";
-            select.appendChild(opt);
+            select.options.add(new Option("(Tidak ada)", "1"));
         } else {
             categories.forEach(c => { 
-                let opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name;
-                select.appendChild(opt);
+                select.options.add(new Option(c.name, c.id)); 
             });
         }
     }
@@ -308,7 +292,7 @@ function renderCategories() {
     if(list) {
         list.innerHTML = '';
         if (categories.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:#888;">Belum ada kategori.</p>';
+            list.innerHTML = '<p style="text-align:center; color:#888;">Belum ada.</p>';
         } else {
             categories.forEach((c, index) => {
                 list.innerHTML += `
@@ -323,11 +307,10 @@ function renderCategories() {
 }
 
 function deleteCategory(index) {
-    if(categories.length <= 1) return alert('Minimal sisakan 1 kategori!');
+    if(categories.length <= 1) return alert('Sisakan 1 kategori ya!');
     categories.splice(index, 1); renderCategories(); renderAllViews(); saveDataToCloud();
 }
 
-// --- TEMA ---
 function toggleDarkMode() {
     let isDark = document.getElementById('darkModeToggle').checked;
     if(isDark) { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); }
